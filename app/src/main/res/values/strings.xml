@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Test</string>
+    <string name="loading">Loading ...</string>
+    <string name="done">Done</string>
+    <string name="vnpt_test">VNPT TEST</string>
+    <string name="system">SYSTEM</string>
+    <string name="phone_number">Phone Number</string>
+
+</resources>
