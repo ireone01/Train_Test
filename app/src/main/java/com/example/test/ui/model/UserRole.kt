@@ -1,7 +1,9 @@
 package com.example.test.ui.model
 
-enum class UserRole (val displayName: String){
+enum class UserRole(val displayName: String) {
     STAFF("STAFF"),
     MANAGER("MANAGER"),
-    STOREKEEPER("STOREKEEPER")
+    STOREKEEPER("STOREKEEPER"),
+
+    NoN("NoN")
 }

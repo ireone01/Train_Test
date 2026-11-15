@@ -5,5 +5,7 @@
     <string name="vnpt_test">VNPT TEST</string>
     <string name="system">SYSTEM</string>
     <string name="phone_number">Phone Number</string>
+    <string name="password">Password</string>
+    <string name="login">Login</string>
 
 </resources>
