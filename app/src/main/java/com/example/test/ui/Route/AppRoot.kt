@@ -45,18 +45,32 @@ fun AppRoot() {
         }
 
         composable(AppRoute.Login) {
-            LoginScreen(onLoginSuccess = { role ->
+            LoginScreen(onLoginSuccess = { session ->
                 navController.navigateTo(
-                    AppRoute.home(role),
-                    popupToRoute = AppRoute.Login, true
+                    route = AppRoute.home(session.role, session.phone),
+                    popupToRoute = AppRoute.Login,
+                    inclusive = true
                 )
-            }, viewModel())
+            }, loginViewModel = viewModel())
         }
 
-        composable(AppRoute.Home) { backstackEntry ->
-            val roleName = backstackEntry.arguments?.getString("role")
+        composable(AppRoute.Home) { backStackEntry ->
+            val roleName = backStackEntry.arguments?.getString("role")
+            val phone = backStackEntry.arguments?.getString("phone")
             val role = roleName?.let { UserRole.valueOf(it) }
-            if (role != null) HomeRoute(role)
+            if (role != null && phone != null) {
+                HomeRoute(
+                    userRole = role,
+                    staffPhone = phone,
+                    onLogout = {
+                        navController.navigateTo(
+                            route = AppRoute.Login,
+                            popupToRoute = AppRoute.Home,
+                            inclusive = true
+                        )
+                    }
+                )
+            }
         }
     }
 }

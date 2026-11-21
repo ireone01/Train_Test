@@ -8,12 +8,11 @@ import com.example.test.ui.model.UserRole
 
 
 @Composable
-fun HomeRoute(userRole: UserRole) {
+fun HomeRoute(userRole: UserRole, staffPhone: String, onLogout: () -> Unit) {
 
     when (userRole) {
-        UserRole.STAFF -> StaffHomeScreen()
-        UserRole.MANAGER -> ManagerHomeScreen()
-        UserRole.STOREKEEPER -> StoreKeeperHomeScreen()
-        else -> null
+        UserRole.STAFF -> StaffHomeScreen(staffPhone = staffPhone, onLogout = onLogout)
+        UserRole.MANAGER -> ManagerHomeScreen(onLogout = onLogout)
+        UserRole.STOREKEEPER -> StoreKeeperHomeScreen(onLogout = onLogout)
     }
 }

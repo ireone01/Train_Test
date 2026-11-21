@@ -7,26 +7,18 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
-class EquipmentViewModel(private val repository: EquipmentRepository = EquipmentRepositoryImpl()) :
+class EquipmentViewModel(private val repository: EquipmentRepository = AppContainer.equipmentRepository) :
     ViewModel() {
-    private val _allEquipment = MutableStateFlow<List<Equipment>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
 
     val searchQuery = _searchQuery.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            _allEquipment.value = repository.getAll()
-        }
-    }
 
     fun onSearchQueryChanges(query: String) {
         _searchQuery.value = query
     }
 
-    val filteredEquipment = combine(_allEquipment, _searchQuery) { items, query ->
+    val filteredEquipment = combine(repository.equipment, _searchQuery) { items, query ->
         if (query.isBlank()) items
         else items.filter { it.name.contains(query.trim(), ignoreCase = true) }
     }.stateIn(
