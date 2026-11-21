@@ -2,16 +2,31 @@ package com.example.test.ui.staff
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.test.di.AppContainer
+import com.example.test.domain.model.BorrowRequest
+import com.example.test.domain.model.Equipment
+import com.example.test.domain.model.OperationResult
+import com.example.test.domain.repository.EquipmentRepository
 import com.example.test.ui.model.UserRole
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class BorrowRequestViewModel(
     private val repository: EquipmentRepository = AppContainer.equipmentRepository
 ) : ViewModel() {
-    val requests = repository.requests
-    val equipment = repository.equipment
+    val requests = repository.observeRequests().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList<BorrowRequest>()
+    )
+    val equipment = repository.observeEquipment().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList<Equipment>()
+    )
 
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()

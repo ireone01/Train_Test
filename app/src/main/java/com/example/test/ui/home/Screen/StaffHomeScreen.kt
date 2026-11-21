@@ -30,14 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.test.ui.model.UserRole
-import com.example.test.ui.staff.BorrowRequest
+import com.example.test.domain.model.BorrowRequest
+import com.example.test.domain.model.Equipment
+import com.example.test.domain.model.RequestStatus
 import com.example.test.ui.staff.BorrowRequestCard
 import com.example.test.ui.staff.BorrowRequestViewModel
-import com.example.test.ui.staff.Equipment
 import com.example.test.ui.staff.EquipmentListContent
 import com.example.test.ui.staff.EquipmentViewModel
-import com.example.test.ui.staff.RequestStatus
 
 @Composable
 fun StaffHomeScreen(

@@ -31,29 +31,31 @@ Wrong OTP must not complete a request or change stock. Prevent duplicate deducti
 
 ## Technical choices
 
-- Kotlin, Jetpack Compose, MVVM, StateFlow, Navigation Compose, Repository pattern, Coroutines.
-- In-memory Fake Repository is the current data layer. No real backend or Room is required for the demo.
-- Hilt was explicitly deferred. Dependencies are provided through a small manual `AppContainer` so workflow state is shared by all role destinations.
-- Fake credentials and role routing are for the exercise only, not production authentication.
+- Kotlin, Jetpack Compose, MVVM, StateFlow, Navigation Compose, Repository pattern, Coroutines, and Room.
+- Room is the persistent local source of truth. No real backend is required for this demo.
+- Hilt was explicitly deferred. A manual `AppContainer` provides shared dependencies.
+- Fake credentials and client-side role checks are for the exercise only, not production authentication.
 
 ## Current implementation
 
 - `MainActivity` launches `AppRoot`; Splash navigates to Login.
-- Login uses `LoginScreenViewModel`, `AuthLogin`, and `AuthLoginImpl` with the three demo accounts. A successful login returns a `UserSession` containing phone and role.
+- Login uses `LoginScreenViewModel`, `AuthLogin`, and `AuthLoginImpl` with the three demo accounts. Successful login returns a `UserSession` containing phone and role.
 - Navigation routes to `home/{role}/{phone}`; `HomeRoute` shows Staff, Manager, or Storekeeper UI and supports logout.
-- `EquipmentRepositoryImpl` is a shared in-memory repository provided by `AppContainer`. It owns equipment and request StateFlows and serializes workflow mutations with a `Mutex`.
-- `EquipmentViewModel` exposes equipment search by name. Staff sees an equipment `LazyColumn`, creates requests with quantity validation, and sees personal request statuses.
-- Manager sees `PENDING_MANAGER` requests and can approve them.
-- Storekeeper sees `PENDING_STOREKEEPER` requests, can issue equipment and generate a six-digit OTP, and sees OTPs awaiting handover.
-- Staff can enter the OTP for their own `WAITING_CONFIRMATION` request. Correct OTP completes the request and deducts stock once. Wrong OTP leaves request and stock unchanged.
-- `BorrowRequestViewModel` connects role screens to the shared repository; repository methods also check the actor role.
+- `InventoryDatabase` is a versioned Room database with exported schema. Equipment and request tables use separate entities. Requests have a foreign key to equipment and indexes for common lookups.
+- `RoomEquipmentRepository` is shared through `AppContainer`. DAO Flows feed the UI; workflow writes use Room transactions.
+- Initial equipment data is seeded idempotently at application startup. The database does not use destructive migration fallback.
+- Staff can search equipment, create requests, track statuses, and confirm receipt with OTP.
+- Manager can approve `PENDING_MANAGER` requests.
+- Storekeeper can issue `PENDING_STOREKEEPER` requests, generate six-digit OTPs, and view codes awaiting handover.
+- Correct OTP completes a request and deducts stock once in the same database transaction. Wrong OTP leaves both request and stock unchanged.
 
 ## Validation and remaining work
 
-- `:app:assembleDebug` completed successfully after the end-to-end implementation.
-- No automated tests or emulator walkthrough have been run. Manually demonstrate the full workflow by logging in as each of the three roles, logging out between roles, and checking stock after OTP confirmation.
-- Potential polish after manual walkthrough: improve loading/error presentation, localize remaining strings, and review layout/keyboard behavior. Prioritize any issues found in the demo flow.
+- `:app:assembleDebug` completed successfully after Room integration.
+- No automated tests or emulator walkthrough have been run. Manually demonstrate the full workflow by logging in as each role, logging out between roles, and checking that stock persists after OTP confirmation and app restart.
+- Database schema is version 1. If entities change, increment the version, add a Room migration, and commit the exported schema under `app/schemas`.
+- After the walkthrough, improve any loading/error states or layout issues found.
 
 ## Collaboration note
 
-The user initially preferred detailed coaching and writing code themselves. In the latest request they explicitly asked Codex to complete the whole application, then commit and push it. For future changes, follow the user's latest instruction; ask whether they want coaching or direct implementation only if the desired mode is unclear.
+The user prefers detailed, incremental guidance but has also explicitly asked Codex to implement requested project work directly and commit/push it. Follow the latest instruction for each task.

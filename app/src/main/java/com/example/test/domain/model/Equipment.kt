@@ -1,4 +1,4 @@
-package com.example.test.ui.staff
+package com.example.test.domain.model
 
 data class Equipment(
     val id: Int,

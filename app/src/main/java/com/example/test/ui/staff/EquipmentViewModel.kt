@@ -2,6 +2,8 @@ package com.example.test.ui.staff
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.test.di.AppContainer
+import com.example.test.domain.repository.EquipmentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +20,7 @@ class EquipmentViewModel(private val repository: EquipmentRepository = AppContai
         _searchQuery.value = query
     }
 
-    val filteredEquipment = combine(repository.equipment, _searchQuery) { items, query ->
+    val filteredEquipment = combine(repository.observeEquipment(), _searchQuery) { items, query ->
         if (query.isBlank()) items
         else items.filter { it.name.contains(query.trim(), ignoreCase = true) }
     }.stateIn(
