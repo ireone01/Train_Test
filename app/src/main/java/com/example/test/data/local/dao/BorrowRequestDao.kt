@@ -2,6 +2,7 @@ package com.example.test.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.test.data.local.entity.BorrowRequestEntity
@@ -25,8 +26,17 @@ interface BorrowRequestDao {
     @Query("SELECT COALESCE(SUM(quantity), 0) FROM borrow_requests WHERE equipmentId = :equipmentId AND status = :status")
     suspend fun reservedQuantity(equipmentId: Int, status: RequestStatus): Int
 
+    @Query("DELETE FROM borrow_requests")
+    suspend fun deleteAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(requests: List<BorrowRequestEntity>)
+
     @Insert
     suspend fun insert(request: BorrowRequestEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(request: BorrowRequestEntity)
 
     @Update
     suspend fun update(request: BorrowRequestEntity): Int

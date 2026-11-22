@@ -1,17 +1,46 @@
 package com.example.test.data.remote
 
+import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Path
 
-/** Retrofit contract. The current base URL points to the local fake HTTP server. */
+/** Example REST contract. The loopback mock server implements these routes for this exercise. */
 interface InventoryApi {
-    @GET("equipment")
-    suspend fun getEquipment(): List<EquipmentDto>
-}
+    @POST("auth/login")
+    suspend fun login(@Body request: LoginRequestDto): Response<LoginResponseDto>
 
-data class EquipmentDto(
-    val id: Int,
-    val name: String,
-    val code: String,
-    val unit: String,
-    val stock: Int
-)
+    @GET("equipment")
+    suspend fun getEquipment(): Response<List<EquipmentDto>>
+
+    @GET("requests")
+    suspend fun getRequests(): Response<List<BorrowRequestDto>>
+
+    @POST("requests")
+    suspend fun createRequest(
+        @Header("X-Actor-Role") actorRole: String,
+        @Body request: CreateRequestDto
+    ): Response<BorrowRequestDto>
+
+    @PATCH("requests/{id}/approve")
+    suspend fun approveRequest(
+        @Header("X-Actor-Role") actorRole: String,
+        @Path("id") requestId: Int
+    ): Response<BorrowRequestDto>
+
+    @POST("requests/{id}/issue")
+    suspend fun issueRequest(
+        @Header("X-Actor-Role") actorRole: String,
+        @Path("id") requestId: Int
+    ): Response<IssueResponseDto>
+
+    @POST("requests/{id}/confirm")
+    suspend fun confirmReceipt(
+        @Header("X-Actor-Role") actorRole: String,
+        @Path("id") requestId: Int,
+        @Body request: ConfirmReceiptDto
+    ): Response<ConfirmReceiptResponseDto>
+}

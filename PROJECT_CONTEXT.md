@@ -32,28 +32,31 @@ Wrong OTP must not complete a request or change stock. Prevent duplicate deducti
 ## Technical choices
 
 - Kotlin, Jetpack Compose, MVVM, StateFlow, Navigation Compose, Repository pattern, Coroutines, and Room.
-- Room is the persistent local source of truth. No real backend is required for this demo.
+- A loopback mock REST API is the workflow authority in the demo; Room is its persistent local cache for the UI.
+- The mock API runs inside the Android process at `http://127.0.0.1:<random-port>/api/`; it is not reachable as a backend from other devices.
 - Hilt was explicitly deferred. A manual `AppContainer` provides shared dependencies.
-- Fake credentials and client-side role checks are for the exercise only, not production authentication.
+- Fake credentials, `X-Actor-Role` headers, and the returned demo token are not production authentication.
 
 ## Current implementation
 
 - `MainActivity` launches `AppRoot`; Splash navigates to Login.
-- Login uses `LoginScreenViewModel`, `AuthLogin`, and `AuthLoginImpl` with the three demo accounts. Successful login returns a `UserSession` containing phone and role.
+- Login uses `LoginScreenViewModel`, `AuthLogin`, and `AuthLoginImpl`; login now calls `POST /api/auth/login` against the local mock API.
 - Navigation routes to `home/{role}/{phone}`; `HomeRoute` shows Staff, Manager, or Storekeeper UI and supports logout.
 - `InventoryDatabase` is a versioned Room database with exported schema. Equipment and request tables use separate entities. Requests have a foreign key to equipment and indexes for common lookups.
-- `RoomEquipmentRepository` is shared through `AppContainer`. DAO Flows feed the UI; workflow writes use Room transactions.
-- Initial equipment data is seeded idempotently at application startup. The database does not use destructive migration fallback.
+- `RoomEquipmentRepository` calls Retrofit endpoints and mirrors successful responses into Room. DAO Flows feed the UI.
+- `FakeApiServer` handles login, equipment, request listing/creation, approval, issue, and OTP confirmation. It persists its mock backend state in SharedPreferences across process restarts.
+- On application startup, equipment and requests are fetched from the fake API and synchronized into Room. The database does not use destructive migration fallback.
 - Staff can search equipment, create requests, track statuses, and confirm receipt with OTP.
 - Manager can approve `PENDING_MANAGER` requests.
 - Storekeeper can issue `PENDING_STOREKEEPER` requests, generate six-digit OTPs, and view codes awaiting handover.
-- Correct OTP completes a request and deducts stock once in the same database transaction. Wrong OTP leaves both request and stock unchanged.
+- The fake API validates roles, request state, stock availability, and OTP. Correct OTP completes the request and deducts stock in the server-side operation; wrong OTP leaves backend state unchanged. Successful API responses are then cached in Room transactions.
 
 ## Validation and remaining work
 
-- `:app:assembleDebug` completed successfully after Room integration.
+- `:app:assembleDebug` completed successfully after the full mock API integration.
 - No automated tests or emulator walkthrough have been run. Manually demonstrate the full workflow by logging in as each role, logging out between roles, and checking that stock persists after OTP confirmation and app restart.
 - Database schema is version 1. If entities change, increment the version, add a Room migration, and commit the exported schema under `app/schemas`.
+- The API contract is invented for learning because the official endpoint specification was not provided. Replace the loopback API and role header approach if a real backend contract becomes available.
 - After the walkthrough, improve any loading/error states or layout issues found.
 
 ## Collaboration note

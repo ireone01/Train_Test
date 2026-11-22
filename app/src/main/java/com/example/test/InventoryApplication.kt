@@ -17,7 +17,7 @@ class InventoryApplication : Application() {
         AppContainer.initialize(this)
         applicationScope.launch {
             runCatching { AppContainer.equipmentRepository.initialize() }
-                .onFailure { Log.e(TAG, "Could not seed the initial equipment catalog", it) }
+                .onFailure { Log.e(TAG, "Could not synchronize the API snapshot into Room", it) }
         }
     }
 

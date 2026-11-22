@@ -20,6 +20,7 @@ object AppContainer {
         if (repositoryInstance != null) return
         synchronized(this) {
             if (repositoryInstance == null) {
+                NetworkModule.initialize(context.applicationContext)
                 repositoryInstance = RoomEquipmentRepository(
                     database = InventoryDatabase.getInstance(context.applicationContext),
                     inventoryApi = NetworkModule.api
