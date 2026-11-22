@@ -4,18 +4,18 @@ import android.content.Context
 import android.util.Log
 import com.example.test.domain.model.RequestStatus
 import com.google.gson.Gson
-import java.io.ByteArrayOutputStream
-import java.net.InetAddress
-import java.net.ServerSocket
-import java.net.Socket
-import java.nio.charset.StandardCharsets
-import java.security.SecureRandom
 import com.google.gson.reflect.TypeToken
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
+import java.net.InetAddress
+import java.util.Locale
+import java.security.SecureRandom
 
-/** In-process mock REST server. It implements the demo endpoints and is not production auth. */
-class FakeApiServer(context: Context) {
-    @Volatile
-    private var serverSocket: ServerSocket? = null
+/** Debug-only mock backend. MockWebServer handles the HTTP protocol; this class handles routes. */
+class FakeApiServer(context: Context) : LocalApiServer {
+    private val server = MockWebServer()
     private val gson = Gson()
     private val random = SecureRandom()
     private val preferences = context.applicationContext.getSharedPreferences("fake_inventory_api", Context.MODE_PRIVATE)
@@ -25,98 +25,55 @@ class FakeApiServer(context: Context) {
     private val requests = loadList<BorrowRequestDto>("requests", requestType, emptyList()).toMutableList()
     private var nextRequestId = (requests.maxOfOrNull { it.id } ?: 0) + 1
 
-    val baseUrl: String
-        get() = checkNotNull(serverSocket) { "Fake API server is not started" }
-            .let { "http://127.0.0.1:${it.localPort}/api/" }
+    override val baseUrl: String
+        get() = server.url("/api/").toString()
+
+    init {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val result = synchronized(this@FakeApiServer) {
+                    route(
+                        method = request.method.orEmpty(),
+                        path = request.url.encodedPath,
+                        actorRole = request.headers["X-Actor-Role"],
+                        body = request.body?.utf8().orEmpty()
+                    )
+                }
+                Log.i(TAG, "${request.method} ${request.url.encodedPath} -> ${result.first}")
+                return MockResponse.Builder()
+                    .code(result.first)
+                    .addHeader("Content-Type", "application/json; charset=utf-8")
+                    .body(gson.toJson(result.second))
+                    .build()
+            }
+        }
+    }
+
+    override fun close() = server.close()
 
     fun start() {
-        if (serverSocket != null) return
-        synchronized(this) {
-            if (serverSocket != null) return
-            val socket = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"))
-            serverSocket = socket
-            Thread({ acceptRequests(socket) }, "vnpt-fake-api").apply {
-                isDaemon = true
-                start()
-            }
-            Log.i(TAG, "Mock API listening at $baseUrl")
-        }
+        server.start(InetAddress.getByName("127.0.0.1"), 0)
+        Log.i(TAG, "Mock API listening at $baseUrl")
     }
 
-    fun stop() {
-        serverSocket?.close()
-        serverSocket = null
-    }
-
-    private fun acceptRequests(server: ServerSocket) {
-        while (!server.isClosed) {
-            try {
-                server.accept().use(::handleRequest)
-            } catch (error: Exception) {
-                if (!server.isClosed) Log.e(TAG, "Request failed", error)
-            }
+    private fun route(method: String, path: String, actorRole: String?, body: String): Pair<Int, Any> =
+        try {
+            routeRequest(method, path, actorRole, body)
+        } catch (error: Exception) {
+            val status = (error as? ApiProblem)?.statusCode ?: 500
+            val message = error.message ?: "Internal server error"
+            Log.w(TAG, "$method $path -> $status: $message")
+            status to ApiErrorDto(message)
         }
-    }
 
-    private fun handleRequest(socket: Socket) {
-        val input = socket.getInputStream()
-        val headerBuffer = ByteArrayOutputStream()
-        var matchedDelimiterBytes = 0
-        while (matchedDelimiterBytes < HEADER_END.size) {
-            val nextByte = input.read()
-            if (nextByte < 0) return
-            headerBuffer.write(nextByte)
-            matchedDelimiterBytes = when {
-                nextByte == HEADER_END[matchedDelimiterBytes].toInt() -> matchedDelimiterBytes + 1
-                nextByte == HEADER_END[0].toInt() -> 1
-                else -> 0
-            }
-        }
-        val headerLines = String(headerBuffer.toByteArray(), StandardCharsets.US_ASCII).split("\r\n")
-        val requestLine = headerLines.firstOrNull().orEmpty()
-        val headers = headerLines.drop(1).mapNotNull { line ->
-            val separator = line.indexOf(':')
-            if (separator <= 0) null else
-                line.substring(0, separator).trim().lowercase() to line.substring(separator + 1).trim()
-        }.toMap()
-        val bodyLength = headers["content-length"]?.toIntOrNull() ?: 0
-        val bodyBytes = ByteArray(bodyLength.coerceAtLeast(0))
-        var bodyRead = 0
-        while (bodyRead < bodyBytes.size) {
-            val count = input.read(bodyBytes, bodyRead, bodyBytes.size - bodyRead)
-            if (count < 0) break
-            bodyRead += count
-        }
-        val body = String(bodyBytes, 0, bodyRead, StandardCharsets.UTF_8)
-        val parts = requestLine.split(' ')
-        val method = parts.getOrNull(0).orEmpty()
-        val path = parts.getOrNull(1).orEmpty().substringBefore('?')
-        val role = headers["x-actor-role"]
-        Log.i(TAG, "$method $path")
-
-        val response = runCatching { route(method, path, role, body) }
-            .getOrElse { error ->
-                val status = when (error) {
-                    is ApiProblem -> error.statusCode
-                    else -> 500
-                }
-                val message = error.message ?: "Internal server error"
-                Log.w(TAG, "$method $path -> $status: $message")
-                status to ApiErrorDto(message)
-            }
-        writeResponse(socket, response.first, gson.toJson(response.second))
-    }
-
-    @Synchronized
-    private fun route(method: String, path: String, actorRole: String?, body: String): Pair<Int, Any> {
+    private fun routeRequest(method: String, path: String, actorRole: String?, body: String): Pair<Int, Any> {
         if (method == "POST" && path == "/api/auth/login") {
-            val request = gson.fromJson(body, LoginRequestDto::class.java)
+            val input = gson.fromJson(body, LoginRequestDto::class.java)
                 ?: problem(400, "Thiếu thông tin đăng nhập")
-            val role = demoAccounts[request.phone]
-            if (role == null || request.password != "123") problem(401, "Số điện thoại hoặc mật khẩu không đúng")
-            return 200 to LoginResponseDto(request.phone, role, "demo-token-${role.lowercase()}")
+            val role = demoAccounts[input.phone]
+            if (role == null || input.password != "123") problem(401, "Số điện thoại hoặc mật khẩu không đúng")
+            return 200 to LoginResponseDto(input.phone, role, "demo-token-${role.lowercase(Locale.ROOT)}")
         }
-
         if (method == "GET" && path == "/api/equipment") return 200 to equipment.toList()
         if (method == "GET" && path == "/api/requests") return 200 to requests.toList()
 
@@ -130,7 +87,7 @@ class FakeApiServer(context: Context) {
                 ?: problem(404, "Không tìm thấy thiết bị")
             val available = availableStock(item)
             if (input.quantity > available) problem(409, "Chỉ còn $available ${item.unit} khả dụng")
-            val request = BorrowRequestDto(
+            val created = BorrowRequestDto(
                 id = nextRequestId++,
                 staffPhone = input.staffPhone,
                 equipmentId = item.id,
@@ -142,9 +99,9 @@ class FakeApiServer(context: Context) {
                 otp = null,
                 createdAtEpochMillis = System.currentTimeMillis()
             )
-            requests += request
+            requests += created
             persistState()
-            return 201 to request
+            return 201 to created
         }
 
         val approve = Regex("/api/requests/(\\d+)/approve").matchEntire(path)
@@ -234,36 +191,11 @@ class FakeApiServer(context: Context) {
             runCatching { gson.fromJson<List<T>>(json, type) }.getOrNull()
         } ?: default
 
-    private fun writeResponse(socket: Socket, status: Int, body: String) {
-        val bytes = body.toByteArray(StandardCharsets.UTF_8)
-        val reason = when (status) {
-            200 -> "OK"
-            201 -> "Created"
-            400 -> "Bad Request"
-            401 -> "Unauthorized"
-            403 -> "Forbidden"
-            404 -> "Not Found"
-            409 -> "Conflict"
-            else -> "Internal Server Error"
-        }
-        val headers = "HTTP/1.1 $status $reason\r\n" +
-            "Content-Type: application/json; charset=utf-8\r\n" +
-            "Content-Length: ${bytes.size}\r\n" +
-            "Connection: close\r\n\r\n"
-        socket.getOutputStream().apply {
-            write(headers.toByteArray(StandardCharsets.US_ASCII))
-            write(bytes)
-            flush()
-        }
-    }
-
     private fun problem(statusCode: Int, message: String): Nothing = throw ApiProblem(statusCode, message)
-
     private class ApiProblem(val statusCode: Int, message: String) : RuntimeException(message)
 
     private companion object {
         const val TAG = "VNPT-FakeAPI"
-        val HEADER_END = byteArrayOf(13, 10, 13, 10)
         val initialEquipment = listOf(
             EquipmentDto(1, "Modem Quang iGate", "MDM-001", "Cái", 50),
             EquipmentDto(2, "Switch 8-Port", "SWT-008", "Cái", 20),

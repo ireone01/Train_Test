@@ -32,8 +32,8 @@ Wrong OTP must not complete a request or change stock. Prevent duplicate deducti
 ## Technical choices
 
 - Kotlin, Jetpack Compose, MVVM, StateFlow, Navigation Compose, Repository pattern, Coroutines, and Room.
-- A loopback mock REST API is the workflow authority in the demo; Room is its persistent local cache for the UI.
-- The mock API runs inside the Android process at `http://127.0.0.1:<random-port>/api/`; it is not reachable as a backend from other devices.
+- A loopback mock REST API is the workflow authority in debug builds; Room is its persistent local cache for the UI.
+- Debug builds use OkHttp MockWebServer at `http://127.0.0.1:<random-port>/api/`; this is a client mock, not a backend reachable by other devices.
 - Hilt was explicitly deferred. A manual `AppContainer` provides shared dependencies.
 - Fake credentials, `X-Actor-Role` headers, and the returned demo token are not production authentication.
 
@@ -44,7 +44,7 @@ Wrong OTP must not complete a request or change stock. Prevent duplicate deducti
 - Navigation routes to `home/{role}/{phone}`; `HomeRoute` shows Staff, Manager, or Storekeeper UI and supports logout.
 - `InventoryDatabase` is a versioned Room database with exported schema. Equipment and request tables use separate entities. Requests have a foreign key to equipment and indexes for common lookups.
 - `RoomEquipmentRepository` calls Retrofit endpoints and mirrors successful responses into Room. DAO Flows feed the UI.
-- `FakeApiServer` handles login, equipment, request listing/creation, approval, issue, and OTP confirmation. It persists its mock backend state in SharedPreferences across process restarts.
+- The debug-only MockWebServer dispatcher handles login, equipment, request listing/creation, approval, issue, and OTP confirmation. It persists mock backend state in SharedPreferences across process restarts.
 - On application startup, equipment and requests are fetched from the fake API and synchronized into Room. The database does not use destructive migration fallback.
 - Staff can search equipment, create requests, track statuses, and confirm receipt with OTP.
 - Manager can approve `PENDING_MANAGER` requests.

@@ -7,7 +7,7 @@
 - Kotlin, Jetpack Compose, MVVM, StateFlow, Coroutines
 - Retrofit 3.0.0 và Gson cho HTTP/JSON
 - Room 2.8.5 làm cache SQLite cục bộ
-- `FakeApiServer` là mock backend nhẹ chạy trên `127.0.0.1` với cổng ngẫu nhiên
+- MockWebServer (chỉ debug) mở fake HTTP API trên `127.0.0.1` với cổng ngẫu nhiên
 
 ## Chạy ứng dụng
 
@@ -21,7 +21,7 @@ Tài khoản demo: Staff `0912345678`, Manager `0988888888`, Storekeeper `090511
 
 ## API contract
 
-Base URL khi chạy có dạng `http://127.0.0.1:<port>/api/`. Cổng được cấp tự động. Các endpoint hiện được khai báo trong `InventoryApi.kt` và xử lý trong `FakeApiServer.kt`:
+Base URL khi chạy debug có dạng `http://127.0.0.1:<port>/api/`. Cổng được cấp tự động. Các endpoint hiện được khai báo trong `InventoryApi.kt` và dispatcher trong `src/debug/.../FakeApiServer.kt`:
 
 | Method | Path | Body | Thành công |
 |---|---|---|---|
@@ -45,13 +45,13 @@ Compose -> ViewModel -> Repository -> Retrofit -> HTTP loopback -> FakeApiServer
 
 Khi khởi động, Repository tải catalog và phiếu từ API rồi đồng bộ vào Room. Các lệnh tạo, duyệt, xuất và xác nhận gọi API trước; chỉ khi server trả thành công, Repository mới cập nhật cache Room trong transaction. UI quan sát Room bằng Flow.
 
-Mock server lưu trạng thái giả lập vào SharedPreferences để dữ liệu demo giữ được sau khi app process khởi động lại. Stock chỉ giảm khi OTP đúng; OTP sai, vai trò sai, trạng thái không hợp lệ hoặc tồn kho không đủ sẽ trả HTTP lỗi và không cập nhật cache.
+Mock server lưu trạng thái giả lập vào SharedPreferences để dữ liệu demo giữ được sau khi app process khởi động lại. Stock chỉ giảm khi OTP đúng; OTP sai, vai trò sai, trạng thái không hợp lệ hoặc tồn kho không đủ sẽ trả HTTP lỗi và không cập nhật cache. Xóa app data để reset mock server và Room về dữ liệu ban đầu.
 
 ## Giới hạn của bản demo
 
-- Server chạy cùng app, không phải backend có thể truy cập từ máy khác và không cần Internet.
+- Fake server chỉ có trong debug build, chạy cùng app; không phải backend có thể truy cập từ máy khác và không cần Internet.
 - Đăng nhập, token và header vai trò chỉ phục vụ mô phỏng, không có bảo mật thật.
-- Base URL HTTP loopback và `usesCleartextTraffic` chỉ dành cho demo. Khi dùng backend thật, chuyển sang HTTPS và cấu hình domain thực.
+- Base URL HTTP loopback và `usesCleartextTraffic` chỉ được bật trong debug build. Release build dùng URL placeholder `https://api.example.invalid/api/`; cần thay bằng domain thật.
 - API contract được tự giả định vì chưa có đặc tả endpoint chính thức.
 
 ## Room

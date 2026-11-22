@@ -9,7 +9,7 @@ object NetworkModule {
     private const val TAG = "VNPT-Network"
 
     @Volatile
-    private var fakeServer: FakeApiServer? = null
+    private var localApiServer: LocalApiServer? = null
 
     @Volatile
     private var apiInstance: InventoryApi? = null
@@ -23,8 +23,8 @@ object NetworkModule {
         if (apiInstance != null) return
         synchronized(this) {
             if (apiInstance != null) return
-            val server = FakeApiServer(context.applicationContext).apply { start() }
-            fakeServer = server
+            val server = LocalApiServerFactory.create(context.applicationContext)
+            localApiServer = server
             Log.i(TAG, "Creating Retrofit client with base URL ${server.baseUrl}")
             apiInstance = Retrofit.Builder()
                 .baseUrl(server.baseUrl)
@@ -35,8 +35,8 @@ object NetworkModule {
     }
 
     fun close() {
-        fakeServer?.stop()
-        fakeServer = null
+        localApiServer?.close()
+        localApiServer = null
         apiInstance = null
     }
 }

@@ -58,6 +58,7 @@ dependencies {
     ksp("androidx.room:room-compiler:2.8.5")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
+    debugImplementation("com.squareup.okhttp3:mockwebserver3:5.5.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
