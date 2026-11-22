@@ -1,7 +1,10 @@
 package com.example.test.data.remote
 
-/** Contract for the inventory service. A Retrofit implementation can replace the fake one. */
+import retrofit2.http.GET
+
+/** Retrofit contract. The current base URL points to the local fake HTTP server. */
 interface InventoryApi {
+    @GET("equipment")
     suspend fun getEquipment(): List<EquipmentDto>
 }
 
