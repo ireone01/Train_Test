@@ -22,6 +22,9 @@ interface EquipmentDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<EquipmentEntity>): List<Long>
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(items: List<EquipmentEntity>)
+
     @Update
     suspend fun update(item: EquipmentEntity): Int
 }

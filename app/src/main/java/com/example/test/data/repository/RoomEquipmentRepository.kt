@@ -5,6 +5,7 @@ import com.example.test.data.local.InventoryDatabase
 import com.example.test.data.local.entity.BorrowRequestEntity
 import com.example.test.data.local.entity.toDomain
 import com.example.test.data.local.entity.toEntity
+import com.example.test.data.remote.InventoryApi
 import com.example.test.domain.model.BorrowRequest
 import com.example.test.domain.model.Equipment
 import com.example.test.domain.model.OperationResult
@@ -16,7 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class RoomEquipmentRepository(
-    private val database: InventoryDatabase
+    private val database: InventoryDatabase,
+    private val inventoryApi: InventoryApi
 ) : EquipmentRepository {
     private val equipmentDao = database.equipmentDao()
     private val requestDao = database.borrowRequestDao()
@@ -29,7 +31,14 @@ class RoomEquipmentRepository(
         requestDao.observeAll().map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun initialize() {
-        database.withTransaction { seedEquipmentIfEmpty() }
+        val remoteEquipment = inventoryApi.getEquipment()
+        database.withTransaction {
+            if (equipmentDao.count() == 0) {
+                equipmentDao.upsertAll(remoteEquipment.map { dto ->
+                    Equipment(dto.id, dto.name, dto.code, dto.unit, dto.stock).toEntity()
+                })
+            }
+        }
     }
 
     override suspend fun createRequest(
@@ -38,7 +47,6 @@ class RoomEquipmentRepository(
         equipmentId: Int,
         quantity: Int
     ): OperationResult = database.withTransaction {
-        seedEquipmentIfEmpty()
         if (actorRole != UserRole.STAFF) return@withTransaction failure("Chỉ nhân viên được tạo phiếu")
         if (staffPhone.isBlank()) return@withTransaction failure("Thiếu số điện thoại nhân viên")
         if (quantity <= 0) return@withTransaction failure("Số lượng phải lớn hơn 0")
@@ -135,18 +143,6 @@ class RoomEquipmentRepository(
             )
         )
         success("Đã xác nhận nhận hàng; phiếu #${request.id} hoàn thành")
-    }
-
-    private suspend fun seedEquipmentIfEmpty() {
-        if (equipmentDao.count() == 0) {
-            equipmentDao.insertAll(
-                listOf(
-                    Equipment(1, "Modem Quang iGate", "MDM-001", "Cái", 50),
-                    Equipment(2, "Switch 8-Port", "SWT-008", "Cái", 20),
-                    Equipment(3, "Kìm bấm mạng", "KIM-001", "Bộ", 10)
-                ).map { it.toEntity() }
-            )
-        }
     }
 
     private suspend fun availableStock(equipmentId: Int, stock: Int): Int {

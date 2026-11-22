@@ -2,6 +2,7 @@ package com.example.test.di
 
 import android.content.Context
 import com.example.test.data.local.InventoryDatabase
+import com.example.test.data.remote.FakeInventoryApi
 import com.example.test.data.repository.RoomEquipmentRepository
 import com.example.test.domain.repository.EquipmentRepository
 
@@ -20,7 +21,8 @@ object AppContainer {
         synchronized(this) {
             if (repositoryInstance == null) {
                 repositoryInstance = RoomEquipmentRepository(
-                    InventoryDatabase.getInstance(context.applicationContext)
+                    database = InventoryDatabase.getInstance(context.applicationContext),
+                    inventoryApi = FakeInventoryApi()
                 )
             }
         }
