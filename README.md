@@ -47,12 +47,31 @@ Khi khởi động, Repository tải catalog và phiếu từ API rồi đồng 
 
 Mock server lưu trạng thái giả lập vào SharedPreferences để dữ liệu demo giữ được sau khi app process khởi động lại. Stock chỉ giảm khi OTP đúng; OTP sai, vai trò sai, trạng thái không hợp lệ hoặc tồn kho không đủ sẽ trả HTTP lỗi và không cập nhật cache. Xóa app data để reset mock server và Room về dữ liệu ban đầu.
 
+## Notification và alarm
+
+Sau khi đăng nhập bằng bất kỳ vai trò nào, nhấn **Nhắc việc** ở thanh trên cùng để mở hộp thoại demo. Tính năng này đứng độc lập với quy trình mượn thiết bị.
+
+- **Gửi thử** tạo notification cục bộ ngay lập tức.
+- Nhập giờ 24 giờ theo dạng `HH:mm`, ví dụ `14:30`, rồi nhấn **Đặt alarm** để lên lịch một notification tại lần xuất hiện kế tiếp của giờ đó. Nếu giờ hôm nay đã qua, alarm sẽ đặt cho ngày mai.
+- **Hủy alarm** hủy alarm đang chờ.
+- Notification có channel `inventory_reminders`; nhấn vào notification sẽ mở lại ứng dụng.
+- Alarm là one-shot, dùng `AlarmManager.setExactAndAllowWhileIdle()` và `RTC_WAKEUP`. Khi tới giờ, `NotificationAlarmReceiver` nhận broadcast rồi gửi notification.
+
+### Quyền cần cấp
+
+- Android 13 trở lên: app xin runtime permission `POST_NOTIFICATIONS`. Nếu từ chối thì Android không hiển thị notification.
+- Android 12 trở lên: exact alarm có thể cần quyền đặc biệt **Alarms & reminders**. Hộp thoại có nút mở trang Settings; khi quay lại app sẽ thử đặt alarm lại.
+- Quyền exact alarm được khai báo bằng `SCHEDULE_EXACT_ALARM`. Cleartext HTTP được bật riêng trong debug manifest để Retrofit gọi MockWebServer loopback; release không bật quyền cleartext này.
+
+Alarm không lặp lại, chưa được khôi phục sau reboot và không có âm thanh/full-screen như ứng dụng đồng hồ báo thức. Hệ điều hành hoặc chính sách tiết kiệm pin của nhà sản xuất vẫn có thể ảnh hưởng thời điểm thực thi. Đây là ví dụ local notification/alarm để trình diễn Android APIs.
+
 ## Giới hạn của bản demo
 
 - Fake server chỉ có trong debug build, chạy cùng app; không phải backend có thể truy cập từ máy khác và không cần Internet.
 - Đăng nhập, token và header vai trò chỉ phục vụ mô phỏng, không có bảo mật thật.
 - Base URL HTTP loopback và `usesCleartextTraffic` chỉ được bật trong debug build. Release build dùng URL placeholder `https://api.example.invalid/api/`; cần thay bằng domain thật.
 - API contract được tự giả định vì chưa có đặc tả endpoint chính thức.
+- Notification/alarm là ví dụ phía client, không gắn với thông báo nghiệp vụ hay lịch nhắc trên server.
 
 ## Room
 

@@ -27,6 +27,7 @@ import com.example.test.ui.staff.BorrowRequestViewModel
 @Composable
 fun ManagerHomeScreen(
     onLogout: () -> Unit,
+    onNotificationClick: () -> Unit = {},
     requestViewModel: BorrowRequestViewModel = viewModel()
 ) {
     val requests by requestViewModel.requests.collectAsState()
@@ -47,7 +48,10 @@ fun ManagerHomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Trưởng đơn vị — Phiếu chờ duyệt")
-                TextButton(onClick = onLogout) { Text("Đăng xuất") }
+                Row {
+                    TextButton(onClick = onNotificationClick) { Text("Nhắc việc") }
+                    TextButton(onClick = onLogout) { Text("Đăng xuất") }
+                }
             }
             message?.let { Text(it, modifier = Modifier.padding(horizontal = 16.dp)) }
 

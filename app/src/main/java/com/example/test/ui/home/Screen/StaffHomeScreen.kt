@@ -42,6 +42,7 @@ import com.example.test.ui.staff.EquipmentViewModel
 fun StaffHomeScreen(
     staffPhone: String,
     onLogout: () -> Unit,
+    onNotificationClick: () -> Unit = {},
     equipmentViewModel: EquipmentViewModel = viewModel(),
     requestViewModel: BorrowRequestViewModel = viewModel()
 ) {
@@ -76,7 +77,10 @@ fun StaffHomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Nhân viên")
-                TextButton(onClick = onLogout) { Text("Đăng xuất") }
+                Row {
+                    TextButton(onClick = onNotificationClick) { Text("Nhắc việc") }
+                    TextButton(onClick = onLogout) { Text("Đăng xuất") }
+                }
             }
             message?.let { Text(it, modifier = Modifier.padding(horizontal = 16.dp)) }
 
